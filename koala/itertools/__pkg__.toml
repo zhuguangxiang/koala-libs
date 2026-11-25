@@ -1,0 +1,8 @@
+[package]
+name = "koala/itertools"
+version = "0.1.0"
+description = "Iterator combinators: reduce, take, skip, chain, count, repeat, flat_map, take_while"
+files = ["*.kl"]
+excludes = []
+dependencies = []
+natives = []

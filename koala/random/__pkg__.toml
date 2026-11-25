@@ -1,0 +1,10 @@
+[package]
+name = "koala/random"
+version = "0.1.0"
+dependencies = []
+natives = []
+
+[native]
+name = "koala_random"
+sources = ["native/random.c"]
+cflags = ["-O2"]
