@@ -667,15 +667,9 @@ static TValue _tensor_fmt(TValue *self, TValue *args, int nargs)
         return no_value;
     }
 
-    /* prefix: Tensor[dtype](shape)( */
-    buf_write_str(&fmt->buf, "Tensor[");
-    buf_write_str(&fmt->buf, tensor_dtype_name(t->dtype));
-    buf_write_str(&fmt->buf, "](");
-    for (int i = 0; i < t->ndim; ++i) {
-        if (i > 0) buf_write_str(&fmt->buf, ", ");
-        buf_write_int64_str(&fmt->buf, t->shape[i]);
-    }
-    buf_write_str(&fmt->buf, ")(");
+    /* light head, pytorch-style: the data leads and the metadata trails as
+     * `, shape=(...), dtype=...` on the closing line */
+    buf_write_str(&fmt->buf, "Tensor(");
 
     TensorPrintCtx ctx;
     ctx.t = t;
@@ -684,8 +678,8 @@ static TValue _tensor_fmt(TValue *self, TValue *args, int nargs)
     ctx.summarize = (t->numel > TENSOR_PRINT_THRESHOLD);
 
     /* continuation lines align one column past the opening bracket; the column
-     * is measured from the last newline so an embedded `format("a={}", t)`
-     * aligns to where the tensor actually starts */
+     * is measured from the last newline so a direct fmt(f) call with prior
+     * content still aligns to where the tensor starts */
     int col = 0;
     char *s = BUF_STR(fmt->buf);
     int len = BUF_LEN(fmt->buf);
@@ -695,6 +689,15 @@ static TValue _tensor_fmt(TValue *self, TValue *args, int nargs)
     }
 
     tensor_fmt_dim(&ctx, 0, 0, col + 1);
+
+    /* trailing metadata: shape and dtype ride on the closing line */
+    buf_write_str(&fmt->buf, ", shape=(");
+    for (int i = 0; i < t->ndim; ++i) {
+        if (i > 0) buf_write_str(&fmt->buf, ", ");
+        buf_write_int64_str(&fmt->buf, t->shape[i]);
+    }
+    buf_write_str(&fmt->buf, "), dtype=");
+    buf_write_str(&fmt->buf, tensor_dtype_name(t->dtype));
     buf_write_char(&fmt->buf, ')');
 
     return no_value;
