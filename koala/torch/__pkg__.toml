@@ -1,0 +1,17 @@
+[package]
+name = "koala/torch"
+version = "0.1.0"
+description = "N-dimensional tensors: the numeric core of the Koala ML stack"
+dependencies = []
+natives = []
+
+[native]
+name = "koala_torch"
+sources = [
+    "native/torch.c",
+    "native/tensorobj.c",
+    "native/storage.c",
+    "native/device_cpu.c",
+]
+includes = ["native"]
+cflags = ["-O2"]

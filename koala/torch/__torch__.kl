@@ -1,0 +1,63 @@
+/*
+ * This file is part of the koala project with MIT License.
+ * Copyright (c) zhuguangxiang <zhuguangxiang@gmail.com>.
+ */
+
+/// N-dimensional tensors: the numeric core of the Koala ML stack.
+///
+/// `Tensor[T]` is an n-dimensional array of numbers of element type `T`, backed by
+/// a contiguous storage that lives outside the gc heap. The class is declared in
+/// `tensor.kl`, its kernels and storage are in `native/`. The factories (`torch.zeros`,
+/// `torch.ones`, `torch.full`, `torch.arange`, `torch.linspace`, `torch.from_list`,
+/// `torch.scalar`) are top-level functions of the package, used like PyTorch.
+///
+///     import "koala/torch"
+///
+///     let x = torch.linspace[float32](0.0, 10.0, 50)
+///     print(x.shape())
+///
+/// V1-min implements `float32` only; the other element types and the C kernels
+/// arrive step by step (docs/koala_tensor.md in koala-lang).
+
+link "koala_torch"
+
+// ---------------- factories ----------------
+//
+// Top-level functions of koala/torch, used like PyTorch: `import "koala/torch"` then
+// `torch.zeros(...)`, `torch.ones(...)`, etc. The element type defaults to float32
+// (`[U = float32]`), so `torch.zeros(2, 3)` works without an explicit type arg or
+// annotation; V1-min implements float32 only. The `Tensor` class is in `tensor.kl`.
+
+/// Return a new tensor of the given shape filled with `0`.
+@native
+pub func zeros[U = float32](shape ...int) Tensor[U] {}
+
+/// Return a new tensor of the given shape filled with `1`.
+@native
+pub func ones[U = float32](shape ...int) Tensor[U] {}
+
+/// Return a new tensor of the given shape filled with `v`.
+@native
+pub func full[U = float32](v float64, shape ...int) Tensor[U] {}
+
+/// Return a 1-D tensor of the values in `[start, stop)` spaced by `step`.
+///
+/// Panic if `step` is `0`.
+@native
+pub func arange[U = float32](start float64, stop float64, step = 1.0) Tensor[U] {}
+
+/// Return a 1-D tensor of `num` values evenly spaced over `[start, stop]`, 50 by default.
+///
+/// Panic if `num` is negative.
+@native
+pub func linspace[U = float32](start float64, stop float64, num = 50) Tensor[U] {}
+
+/// Return a new tensor of the given shape holding the flat `data` in row-major order.
+///
+/// Without a shape the result is 1-D. Panic if the shape does not hold `data.len()` values.
+@native
+pub func from_list[U = float32](data list[float64], shape ...int) Tensor[U] {}
+
+/// Return a 0-dim tensor holding `v`.
+@native
+pub func scalar[U = float32](v float64) Tensor[U] {}

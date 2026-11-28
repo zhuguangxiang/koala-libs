@@ -1,0 +1,176 @@
+// RUN: koala %s --test
+
+import "std/ut"
+import "koala/torch"
+
+// lists compare by identity in koala, so a list result is checked through its
+// rendering: `format("{}", t.shape())` is "[2, 3]".
+
+@test
+func test_tensor_zeros() {
+    let t = torch.zeros[float32](2, 3)
+    ut.assert_eq(format("{}", t.shape()), "[2, 3]")
+    ut.assert_eq(t.ndim(), 2)
+    ut.assert_eq(t.numel(), 6)
+    ut.assert_eq(t.at(1, 2), 0.0)
+}
+
+@test
+func test_tensor_ones() {
+    let t = torch.ones[float32](3)
+    ut.assert_eq(format("{}", t.tolist()), "[1, 1, 1]")
+}
+
+@test
+func test_tensor_full() {
+    let t = torch.full[float32](2.5, 2, 2)
+    ut.assert_eq(format("{}", t.tolist()), "[2.5, 2.5, 2.5, 2.5]")
+}
+
+@test
+func test_tensor_arange() {
+    let a = torch.arange[float32](0.0, 5.0)
+    ut.assert_eq(format("{}", a.tolist()), "[0, 1, 2, 3, 4]")
+
+    let b = torch.arange[float32](0.0, 6.0, 2.0)
+    ut.assert_eq(format("{}", b.tolist()), "[0, 2, 4]")
+}
+
+@test
+func test_tensor_linspace() {
+    let t = torch.linspace[float32](0.0, 1.0, 5)
+    ut.assert_eq(format("{}", t.tolist()), "[0, 0.25, 0.5, 0.75, 1]")
+}
+
+@test
+func test_tensor_from_list() {
+    let t = torch.from_list[float32]([1.0, 2.0, 3.0, 4.0], 2, 2)
+    ut.assert_eq(format("{}", t.shape()), "[2, 2]")
+    ut.assert_eq(t.at(0, 1), 2.0)
+    ut.assert_eq(t.at(1, 1), 4.0)
+}
+
+@test
+func test_tensor_scalar() {
+    let t = torch.scalar[float32](3.5)
+    ut.assert_eq(t.ndim(), 0)
+    ut.assert_eq(t.numel(), 1)
+    ut.assert_eq(t.item(), 3.5)
+}
+
+@test
+func test_tensor_stride() {
+    let t = torch.zeros[float32](2, 3)
+    ut.assert_eq(format("{}", t.stride()), "[3, 1]")
+    ut.assert(t.is_contiguous())
+}
+
+@test
+func test_tensor_at_negative() {
+    let t = torch.from_list[float32]([1.0, 2.0, 3.0, 4.0], 2, 2)
+    ut.assert_eq(t.at(-1, -1), 4.0)
+    ut.assert_eq(t.at(-2, -2), 1.0)
+}
+
+// the factory takes its element type from the annotation, so no [float32] is
+// written on the call
+@test
+func test_tensor_infer_from_annotation() {
+    let a torch.Tensor[float32] = torch.zeros(2, 3)
+    ut.assert_eq(format("{}", a), "Tensor[f32](2, 3)([[0., 0., 0.],\n                   [0., 0., 0.]])")
+
+    let b torch.Tensor[float32] = torch.arange(0.0, 3.0)
+    ut.assert_eq(format("{}", b.tolist()), "[0, 1, 2]")
+
+    let c torch.Tensor[float32] = torch.scalar(3.5)
+    ut.assert_eq(c.item(), 3.5)
+}
+
+// the element type defaults to float32 ([U = float32]), so a factory call needs
+// neither an explicit [float32] nor a Tensor[float32] annotation
+@test
+func test_tensor_default_dtype() {
+    let a = torch.zeros(2, 3)
+    ut.assert_eq(format("{}", a), "Tensor[f32](2, 3)([[0., 0., 0.],\n                   [0., 0., 0.]])")
+
+    let b = torch.ones(3)
+    ut.assert_eq(format("{}", b.tolist()), "[1, 1, 1]")
+
+    let c = torch.full(2.5, 2)
+    ut.assert_eq(format("{}", c.tolist()), "[2.5, 2.5]")
+
+    let d = torch.arange(0.0, 3.0)
+    ut.assert_eq(format("{}", d.tolist()), "[0, 1, 2]")
+
+    let e = torch.linspace(0.0, 1.0, 3)
+    ut.assert_eq(format("{}", e.tolist()), "[0, 0.5, 1]")
+
+    let f = torch.from_list([1.0, 2.0, 3.0, 4.0], 2, 2)
+    ut.assert_eq(f.at(1, 1), 4.0)
+
+    let g = torch.scalar(3.5)
+    ut.assert_eq(g.item(), 3.5)
+}
+
+// fmt is the only text form of a tensor, there is no to_str
+@test
+func test_tensor_fmt() {
+    let t = torch.from_list[float32]([1.0, 2.0, 3.0, 4.0], 2, 2)
+    ut.assert_eq(format("{}", t), "Tensor[f32](2, 2)([[1., 2.],\n                   [3., 4.]])")
+}
+
+// the elements print as float32, not widened to float64: 0.1 stays 0.1
+@test
+func test_tensor_fmt_float32() {
+    let t = torch.full[float32](0.1, 2)
+    ut.assert_eq(format("{}", t), "Tensor[f32](2)([0.1000, 0.1000])")
+}
+
+// integer-valued floats keep a trailing dot; 1-D stays on one line
+@test
+func test_tensor_fmt_trailing_dot() {
+    let t = torch.ones(3)
+    ut.assert_eq(format("{}", t), "Tensor[f32](3)([1., 1., 1.])")
+}
+
+// a 0-dim tensor is its bare value; a non-integer uses precision 4
+@test
+func test_tensor_fmt_scalar() {
+    let t = torch.scalar(3.5)
+    ut.assert_eq(format("{}", t), "Tensor[f32]()(3.5000)")
+}
+
+// non-integer values use precision 4 and align to a common column width
+@test
+func test_tensor_fmt_precision() {
+    let t = torch.from_list([1.5, 2.0])
+    ut.assert_eq(format("{}", t), "Tensor[f32](2)([1.5000, 2.0000])")
+}
+
+// integer mode still right-aligns columns of different widths
+@test
+func test_tensor_fmt_align() {
+    let t = torch.from_list([1.0, 20.0, 300.0, 4.0], 2, 2)
+    ut.assert_eq(format("{}", t), "Tensor[f32](2, 2)([[  1.,  20.],\n                   [300.,   4.]])")
+}
+
+// a 3-D tensor separates its top-level blocks with a blank line
+@test
+func test_tensor_fmt_3d() {
+    let t = torch.ones(2, 2, 2)
+    ut.assert_eq(format("{}", t), "Tensor[f32](2, 2, 2)([[[1., 1.],\n                       [1., 1.]],\n\n                      [[1., 1.],\n                       [1., 1.]]])")
+}
+
+// numel over the threshold collapses each large dimension to `...`
+@test
+func test_tensor_fmt_summarize() {
+    let t = torch.arange(0.0, 1001.0)
+    ut.assert_eq(format("{}", t), "Tensor[f32](1001)([   0.,    1.,    2.,   ...,  998.,  999., 1000.])")
+}
+
+@test
+func test_tensor_free() {
+    let t = torch.ones[float32](2)
+    t.free()
+    ut.assert_eq(format("{}", t), "Tensor[freed]")
+}

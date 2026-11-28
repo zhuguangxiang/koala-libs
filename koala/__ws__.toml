@@ -33,4 +33,5 @@ packages = [
     "toml",
     "argparse",
     "wombat",
+    "torch",
 ]

@@ -1,0 +1,42 @@
+# Global flags: let clangd find the Koala toolchain headers (object.h,
+# buffer.h, excobj.h, ...). ~/.local/lib/koala is a symlink to the currently
+# installed version, so this survives toolchain upgrades.
+CompileFlags:
+  Add:
+    - -ferror-limit=0
+    - -I/home/james/.local/lib/koala/include
+    - -I/home/james/.local/lib/koala/include/koala/common
+    - -I/home/james/.local/lib/koala/include/koala/runtime
+
+---
+# Vendored third-party headers, mirroring [native].includes in each
+# package's __pkg__.toml. Paths must be absolute: clangd resolves relative
+# -I flags against the compile command's working directory, not this file.
+If:
+  PathMatch: koala/zlib/.*
+CompileFlags:
+  Add: [-I/home/james/Codes/koala-lab/koala-libs/koala/zlib/native/zlib]
+
+---
+If:
+  PathMatch: koala/http/.*
+CompileFlags:
+  Add: [-I/home/james/Codes/koala-lab/koala-libs/koala/http/native/llhttp/include]
+
+---
+If:
+  PathMatch: koala/torch/.*
+CompileFlags:
+  Add: [-I/home/james/Codes/koala-lab/koala-libs/koala/torch/native]
+
+---
+# sqlite3 also needs the -D macros from its __pkg__.toml cflags, otherwise
+# the vendored amalgamation takes different #if branches than the real build.
+If:
+  PathMatch: koala/sqlite3/.*
+CompileFlags:
+  Add:
+    - -I/home/james/Codes/koala-lab/koala-libs/koala/sqlite3/native/sqlite3
+    - -DSQLITE_THREADSAFE=1
+    - -DSQLITE_OMIT_LOAD_EXTENSION
+    - -DSQLITE_DQS=0

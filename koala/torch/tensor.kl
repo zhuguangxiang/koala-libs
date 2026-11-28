@@ -1,0 +1,268 @@
+/*
+ * This file is part of the koala project with MIT License.
+ * Copyright (c) zhuguangxiang <zhuguangxiang@gmail.com>.
+ */
+
+/// A Tensor is an n-dimensional array of numbers of element type `T`.
+///
+/// The class lives in `koala/torch`. Import the package and use it like PyTorch:
+/// `import "koala/torch"` then `torch.zeros(...)`, `torch.Tensor[float32]`. The design
+/// is in docs/koala_tensor.md (koala-lang).
+///
+/// V1-min scope: only `float32` is implemented, the C kernels come step by step (M2–M5).
+///
+/// - The factories are top-level functions of the package (`torch.zeros`, `torch.ones`,
+///   `torch.full`, `torch.arange`, `torch.linspace`, `torch.from_list`, `torch.scalar`),
+///   like PyTorch. A factory takes its element type from where the result goes, e.g.
+///   `let w torch.Tensor[float32] = torch.zeros(3, 4)`; without such a type it is written
+///   explicitly: `let w = torch.zeros[float32](3, 4)`.
+/// - A scalar argument is passed as `float64` and converted to `T` (a weak scalar). The
+///   arithmetic operators take a tensor or a scalar: `t + u`, `t * 2.0`, `t += 1.0`. A scalar
+///   on the left (`2.0 * t`) and an int literal (`t + 2`) are not supported: write `t * 2.0`.
+/// - Shape errors, out-of-range indices and invalid dims panic with the operator name and the
+///   shapes, e.g. `add: shapes [3, 4] and [5] are not broadcastable`.
+///
+/// Examples
+///
+/// ```kl
+/// import "koala/torch"
+/// let x = torch.linspace[float32](0.0, 10.0, 50)
+/// let y = x * 2.0 + 1.0
+/// print(y.mean().item())
+/// ```
+pub class Tensor[T] {
+    // ---------------- attributes ----------------
+
+    /// Return the size of each dimension.
+    @native
+    pub func shape() list[int] {}
+
+    /// Return the number of dimensions, `0` for a 0-dim tensor.
+    @native
+    pub func ndim() int {}
+
+    /// Return the total number of elements, `1` for a 0-dim tensor.
+    @native
+    pub func numel() int {}
+
+    /// Return the stride of each dimension, counted in elements.
+    @native
+    pub func stride() list[int] {}
+
+    /// Return true if the elements are laid out contiguously in row-major order.
+    @native
+    pub func is_contiguous() bool {}
+
+    // ---------------- views ----------------
+
+    /// Return a tensor of the given shape with the same elements; one size may be `-1`.
+    ///
+    /// It shares the storage when it can, otherwise it copies.
+    @native
+    pub func reshape(shape ...int) Tensor[T] {}
+
+    /// Return a view of the given shape with the same elements; one size may be `-1`.
+    ///
+    /// Panic if the view cannot share the storage, use `reshape` instead.
+    @native
+    pub func view(shape ...int) Tensor[T] {}
+
+    /// Return a view with the dimensions `d0` and `d1` swapped.
+    ///
+    /// By default the last two dimensions are swapped: `m.transpose()` is the transpose of a
+    /// matrix, and of each matrix in a batch. There is no short alias like `t()`.
+    /// Panic if a dimension is out of range, e.g. on a tensor of fewer than 2 dimensions.
+    @native
+    pub func transpose(d0 = -2, d1 = -1) Tensor[T] {}
+
+    /// Return a view with a dimension of size `1` inserted at `dim`, the front by default.
+    @native
+    pub func unsqueeze(dim = 0) Tensor[T] {}
+
+    /// Return a view with the dimension `dim` of size `1` removed.
+    ///
+    /// Panic if the size of `dim` is not `1`.
+    @native
+    pub func squeeze(dim int) Tensor[T] {}
+
+    /// Return a view of `len` elements of the dimension `dim`, starting at `start`.
+    @native
+    pub func narrow(dim int, start int, len int) Tensor[T] {}
+
+    /// Return a view of the index `i` of the dimension `dim`, the dimension is removed.
+    @native
+    pub func select(dim int, i int) Tensor[T] {}
+
+    /// Return a view broadcast to the given shape; a size of `-1` keeps the dimension.
+    ///
+    /// The expanded dimensions have stride `0`, writing into the view panics.
+    @native
+    pub func expand(shape ...int) Tensor[T] {}
+
+    // ---------------- copies ----------------
+
+    /// Return `self` if it is contiguous, otherwise a contiguous copy.
+    @native
+    pub func contiguous() Tensor[T] {}
+
+    /// Return a contiguous copy that does not share the storage.
+    @native
+    pub func clone() Tensor[T] {}
+
+    /// Copy the elements of `src`, broadcast to the shape of `self`, into `self`.
+    @native
+    pub func copy_(src Tensor[T]) Tensor[T] {}
+
+    // ---------------- elementwise ----------------
+
+    /// Return `self + rhs`: a tensor is broadcast with `self`, a scalar is added to each element.
+    @native
+    pub func __add__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// Return `self - rhs`: a tensor is broadcast with `self`, a scalar is subtracted from
+    /// each element.
+    @native
+    pub func __sub__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// Return `self * rhs`: a tensor is broadcast with `self`, a scalar multiplies each element.
+    @native
+    pub func __mul__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// Return `self / rhs`: a tensor is broadcast with `self`, a scalar divides each element.
+    @native
+    pub func __div__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// Return `-self` for each element.
+    ///
+    /// The unary `-` operator only works on int and float, so it is a method in V1-min.
+    @native
+    pub func neg() Tensor[T] {}
+
+    /// Return `e^x` for each element.
+    @native
+    pub func exp() Tensor[T] {}
+
+    /// Return the natural logarithm of each element.
+    @native
+    pub func log() Tensor[T] {}
+
+    /// Return the square root of each element.
+    @native
+    pub func sqrt() Tensor[T] {}
+
+    /// Return the absolute value of each element.
+    @native
+    pub func abs() Tensor[T] {}
+
+    /// Return `max(x, 0)` for each element.
+    @native
+    pub func relu() Tensor[T] {}
+
+    /// Return `1 / (1 + e^-x)` for each element.
+    @native
+    pub func sigmoid() Tensor[T] {}
+
+    /// Return the hyperbolic tangent of each element.
+    @native
+    pub func tanh() Tensor[T] {}
+
+    // ---------------- reductions ----------------
+
+    /// Return the sum of all elements as a 0-dim tensor.
+    @native
+    pub func sum() Tensor[T] {}
+
+    /// Return the mean of all elements as a 0-dim tensor.
+    @native
+    pub func mean() Tensor[T] {}
+
+    /// Return the largest element as a 0-dim tensor.
+    ///
+    /// Panic if the tensor is empty.
+    @native
+    pub func max() Tensor[T] {}
+
+    /// Return the smallest element as a 0-dim tensor.
+    ///
+    /// Panic if the tensor is empty.
+    @native
+    pub func min() Tensor[T] {}
+
+    /// Return the sum over the dimension `dim`, the last one by default.
+    ///
+    /// The dimension is kept with size `1` if `keepdim`.
+    @native
+    pub func sum_dim(dim = -1, keepdim = false) Tensor[T] {}
+
+    /// Return the mean over the dimension `dim`, the last one by default.
+    ///
+    /// The dimension is kept with size `1` if `keepdim`.
+    @native
+    pub func mean_dim(dim = -1, keepdim = false) Tensor[T] {}
+
+    // ---------------- linear algebra ----------------
+
+    /// Return the matrix product of `self` and `b`: 1-D · 1-D, 2-D · 1-D or 2-D · 2-D.
+    @native
+    pub func matmul(b Tensor[T]) Tensor[T] {}
+
+    // ---------------- in-place ----------------
+    //
+    // A method ending in `_` writes into `self` and returns it. In-place arithmetic is written
+    // with the operators only: `t += u`, `t -= 1.0`; there is no `add_` / `sub_` / ...
+
+    /// The `+=` operator: `self += rhs`, a tensor is broadcast to the shape of `self`.
+    @native
+    pub func __iadd__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// The `-=` operator: `self -= rhs`, a tensor is broadcast to the shape of `self`.
+    @native
+    pub func __isub__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// The `*=` operator: `self *= rhs`, a tensor is broadcast to the shape of `self`.
+    @native
+    pub func __imul__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// The `/=` operator: `self /= rhs`, a tensor is broadcast to the shape of `self`.
+    @native
+    pub func __idiv__(rhs Tensor[T] | float64) Tensor[T] {}
+
+    /// Set every element to `v`.
+    @native
+    pub func fill_(v float64) Tensor[T] {}
+
+    /// Set every element to `0`.
+    @native
+    pub func zero_() Tensor[T] {}
+
+    // ---------------- scalars and output ----------------
+
+    /// Return the only element of a tensor holding one element.
+    ///
+    /// Panic if `numel()` is not `1`.
+    @native
+    pub func item() float64 {}
+
+    /// Return the element at the given index, one index per dimension.
+    @native
+    pub func at(idx ...int) float64 {}
+
+    /// Return all elements as a flat list in row-major order.
+    @native
+    pub func tolist() list[float64] {}
+
+    /// Return true if the shapes are equal and `|a - b| <= atol + rtol * |b|` for each element.
+    @native
+    pub func allclose(b Tensor[T], rtol = 1e-5, atol = 1e-8) bool {}
+
+    /// Release the storage now if no other tensor shares it; `self` must not be used after it.
+    @native
+    pub func free() {}
+
+    /// Write the shape and the elements of the tensor to `f`.
+    ///
+    /// This is the only text form of a tensor: `print(t)` and `format("{}", t)` use it.
+    /// There is no `to_str`, which would mean converting the tensor to a string.
+    @native
+    pub func fmt(f Formatter) {}
+}
